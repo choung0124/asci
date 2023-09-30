@@ -1,73 +1,66 @@
 from PIL import Image, ImageDraw, ImageFont
-import sys
+import numpy as np
 
-def image_to_reversed_ascii(image_path, output_width=None):
-    """
-    Convert the provided image to a reversed (darker) high-resolution ASCII representation.
-    """
-    # Reversed set of ASCII characters ordered by their visual density
+def image_to_aspect_maintained_ascii_expanded(image_path, output_width=None, char_aspect_ratio=2.2):
+    """Convert the provided image to a high-resolution ASCII representation while expanding horizontally."""
     ascii_chars = list("#@8%*+=-:. ")
-    
-    # Load the image
     img = Image.open(image_path)
-    
-    # Calculate aspect ratio and desired width
-    aspect_ratio = img.height / img.width
+    original_aspect_ratio = img.height / img.width
+
     if output_width:
-        output_height = int(aspect_ratio * output_width)
+        adjusted_output_width = int(output_width * char_aspect_ratio)
+        output_height = int(adjusted_output_width * original_aspect_ratio / char_aspect_ratio)
     else:
-        output_width = img.width
+        adjusted_output_width = int(img.width * char_aspect_ratio)
         output_height = img.height
 
-    # Resize the image
-    img = img.resize((output_width, output_height))
-    
-    # Convert the image to grayscale
+    img = img.resize((adjusted_output_width, output_height), Image.ANTIALIAS)
     img = img.convert("L")
-    
-    # Convert each pixel to the appropriate ASCII character
     pixels = list(img.getdata())
     ascii_image = [ascii_chars[pixel * len(ascii_chars) // 256] for pixel in pixels]
-    
-    # Split the ASCII image into lines
-    ascii_image = [ascii_image[index: index + output_width] for index in range(0, len(ascii_image), output_width)]
-    
-    # Convert the ASCII image into a string format
+    ascii_image = [ascii_image[index: index + adjusted_output_width] for index in range(0, len(ascii_image), adjusted_output_width)]
     return "\n".join(["".join(row) for row in ascii_image])
 
-def ascii_art_to_image_small_font(ascii_art, font_size=6):
-    """
-    Convert ASCII art to an image using a smaller font.
-    """
-    # Use the default PIL font
-    font = ImageFont.load_default()
-
-    # Calculate the size required for the image
+def ascii_art_to_image_square_aspect(ascii_art, font_size=10, font_path="/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"):
+    """Convert ASCII art to an image using a monospaced font with a square aspect ratio."""
+    font = ImageFont.truetype(font_path, font_size)
     ascii_lines = ascii_art.split("\n")
-    max_width = max([font.getsize(line)[0] for line in ascii_lines])
+    max_width = max([len(line) for line in ascii_lines]) * font_size
     total_height = len(ascii_lines) * font_size
 
-    # Create a new white image with the calculated size
     image = Image.new("L", (max_width, total_height), 255)
     draw = ImageDraw.Draw(image)
-
-    # Draw each line of the ASCII art on the image
     y_position = 0
     for line in ascii_lines:
         draw.text((0, y_position), line, font=font, fill=0)
         y_position += font_size
-
     return image
+
+def trim_whitespace(image):
+    """Trim whitespace from the right side of an image."""
+    img_array = np.array(image)
+    col_sum = np.sum(img_array, axis=0)
+    last_col_index = np.where(col_sum < 255 * img_array.shape[0])[0][-1]
+    img_array_cropped = img_array[:, :last_col_index+1]
+    return Image.fromarray(img_array_cropped)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python script_name.py <path_to_image>")
+        print("Please provide the path to the image as an argument.")
         sys.exit(1)
     
     image_path = sys.argv[1]
-    reversed_ascii_art = image_to_reversed_ascii(image_path, output_width=300)
-    ascii_image_result = ascii_art_to_image_small_font(reversed_ascii_art)
-    
-    output_image_path_result = image_path.rsplit('.', 1)[0] + "_reversed_ascii.png"
-    ascii_image_result.save(output_image_path_result)
-    print(f"Saved ASCII art image to: {output_image_path_result}")
+    output_width = 600
+
+    # Convert to ASCII
+    ascii_art = image_to_aspect_maintained_ascii_expanded(image_path, output_width)
+    # Render ASCII to image
+    ascii_image = ascii_art_to_image_square_aspect(ascii_art)
+    # Trim whitespace
+    trimmed_image = trim_whitespace(ascii_image)
+
+    # Save results
+    ascii_image.save("ascii_output.png")
+    trimmed_image.save("trimmed_output.png")
+    with open("ascii_output.txt", 'w') as file:
+        file.write(ascii_art)
