@@ -1,12 +1,12 @@
 from PIL import Image, ImageDraw, ImageFont
 import sys
 
-def image_to_extended_ascii(image_path, output_width=None):
+def image_to_reversed_ascii(image_path, output_width=None):
     """
-    Convert the provided image to a high-resolution ASCII representation using an extended set of characters.
+    Convert the provided image to a reversed (darker) high-resolution ASCII representation.
     """
-    # Extended set of ASCII characters ordered by their visual density
-    ascii_chars = list(" .:-=+*%@#")
+    # Reversed set of ASCII characters ordered by their visual density
+    ascii_chars = list("#@8%*+=-:. ")
     
     # Load the image
     img = Image.open(image_path)
@@ -65,9 +65,9 @@ if __name__ == "__main__":
         sys.exit(1)
     
     image_path = sys.argv[1]
-    extended_ascii_art = image_to_extended_ascii(image_path, output_width=300)
-    ascii_image_result = ascii_art_to_image_small_font(extended_ascii_art)
+    reversed_ascii_art = image_to_reversed_ascii(image_path, output_width=300)
+    ascii_image_result = ascii_art_to_image_small_font(reversed_ascii_art)
     
-    output_image_path_result = image_path.rsplit('.', 1)[0] + "_extended_ascii.png"
+    output_image_path_result = image_path.rsplit('.', 1)[0] + "_reversed_ascii.png"
     ascii_image_result.save(output_image_path_result)
     print(f"Saved ASCII art image to: {output_image_path_result}")
